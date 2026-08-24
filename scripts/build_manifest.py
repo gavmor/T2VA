@@ -41,8 +41,29 @@ STYLE_ANCHOR = (
 )
 
 
+# Categories with no body/limbs to pose -- the organism-shaped "full-body
+# A-pose" template (below) makes the model hallucinate a human body wearing
+# the vehicle/drone as a head (confirmed live 2026-08-24 on carrier/tank/
+# probe's first batch render: shot 1 correctly showed the machine, shots
+# 2-4 showed a soldier instead). These get an object-appropriate template:
+# no pose language, just camera angle around the whole machine.
+OBJECT_CATEGORIES = {"vehicle", "drone"}
+
+
 def build_prompt(entry):
     desc = entry["description"]
+    if entry["category"] in OBJECT_CATEGORIES:
+        return (
+            f"[Shot 1, 0:00-0:01, static freeze-frame] Close-up detail "
+            f"shot, no motion: {desc}. "
+            f"[Shot 2, 0:01-0:02, hard cut] Full view of the entire "
+            f"machine from the front, three-quarter angle: {desc}. "
+            f"[Shot 3, 0:02-0:03, hard cut] Full view of the entire "
+            f"machine from directly behind: {desc}. "
+            f"[Shot 4, 0:03-0:04, hard cut] Full view of the entire "
+            f"machine from the side, profile facing camera-right: {desc}. "
+            f"{STYLE_ANCHOR}"
+        )
     return (
         f"[Shot 1, 0:00-0:01, static freeze-frame] Head-and-shoulders "
         f"close-up, direct-to-camera neutral gaze, no motion: {desc}. "
