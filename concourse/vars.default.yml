@@ -1,0 +1,29 @@
+# Non-secret, environment-specific config -- same physical box/network as
+# blades68-lora's concourse/vars.default.yml, so these values are copied
+# from there rather than re-derived. Load alongside blades68-lora's existing
+# .secrets/vars.yml (NOT duplicated into this repo -- same gpu-lock/minio
+# credentials, no reason to fork them):
+#
+#   fly -t blades68 set-pipeline -p t2va -c concourse/pipeline.yml \
+#     -l concourse/vars.default.yml \
+#     -l ~/code/blades68-lora/concourse/.secrets/vars.yml \
+#     -v char_slug=CHANGE_ME
+#
+# char_slug/t2va_limit have no default on purpose -- see README.md for the
+# per-job vars each requires.
+
+comfyui_local_url: http://192.168.16.1:8188
+minio_endpoint: http://192.168.16.1:9000
+minio_bucket: blades68-crew-groups
+
+# char_slug (2026-08-24): which roster entry t2va-single renders. No
+# meaningful default -- left empty so `fly set-pipeline` without an
+# explicit -v char_slug=<slug> produces a t2va-single job that fails fast
+# in build_manifest.py's --slug lookup rather than silently rendering the
+# wrong (or a stale previous) character.
+char_slug: ""
+# t2va_limit (2026-08-24): validation knob for t2va-batch-all, same
+# convention as blades68-lora's charref_limit -- empty means the real
+# full 30-entry roster; set to a small number only for a throwaway test
+# validating the render mechanism before committing to the full batch.
+t2va_limit: ""
