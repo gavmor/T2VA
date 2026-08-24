@@ -131,6 +131,18 @@ jobs:
                 python3 scripts/extract_and_compose.py --slug "$SLUG" \
                   --manifest "$MANIFEST" --video-dir ../raw-videos \
                   --stills-dir /tmp/t2va-stills --sheets-dir ../charref-sheets
+                # t2va-single's charref-sheets output is ephemeral (this
+                # task container is gone once the build ends) -- upload the
+                # finished sheet to comfyui-local's own output store so it's
+                # actually retrievable afterwards, same pattern
+                # h3-charref-fullredo's extract-and-compose task already
+                # uses for its final composited sheets.
+                SHEET="../charref-sheets/${SLUG}_charref.png"
+                curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
+                  -F "image=@${SHEET};filename=${SLUG}_charref.png" \
+                  -F "type=output" -F "subfolder=t2va-single" -F "overwrite=true" >/dev/null \
+                  || { echo "FAILED to upload ${SLUG}_charref.png"; exit 1; }
+                echo "SHEET_RESULT filename=${SLUG}_charref.png subfolder=t2va-single"
                 echo "--- [$(date -Iseconds)] t2va-single: $SLUG complete ---"
         ensure:
           in_parallel:
