@@ -15,6 +15,15 @@
 comfyui_local_url: http://192.168.16.1:8188
 minio_endpoint: http://192.168.16.1:9000
 minio_bucket: blades68-crew-groups
+# immich (2026-08-24): same standalone Docker Compose Immich deploy
+# blades68-lora's local-immich-gallery egress uses -- shared instance, no
+# reason to stand up a second one for this repo's own egress.
+immich_url: http://192.168.16.1:2283
+# immich_resource_version: image tag for the custom immich-api resource
+# type, pinned to the exact commit blades68-lora's pipeline validated
+# against a live Immich instance -- see that repo's pipeline.yml
+# resource_types comment for why not :latest.
+immich_resource_version: edge-b20bf24
 
 # char_slug (2026-08-24): which roster entry t2va-single renders. No
 # meaningful default -- left empty so `fly set-pipeline` without an
