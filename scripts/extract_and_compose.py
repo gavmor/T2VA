@@ -19,11 +19,42 @@ import json
 import os
 import re
 import subprocess
+from xml.sax.saxutils import escape as xml_escape
 
 SHOT_LABELS = ["Head", "Front", "Back", "Side"]
 N_SHOTS = 4
 CUT_SCORE_FLOOR = 1.0
 DEFAULT_FONT = "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"
+
+XMP_TEMPLATE = """<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+      xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <dc:description>
+        <rdf:Alt>
+          <rdf:li xml:lang="x-default">{description}</rdf:li>
+        </rdf:Alt>
+      </dc:description>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>
+"""
+
+
+def write_xmp_sidecar(entry, sheet_path):
+    """Writes a <sheet>.xmp next to the composed reference sheet so
+    immich-concourse-resource's out script auto-detects and binds it,
+    landing the ComfyUI render prompt in the Immich asset's
+    exifInfo.description field (verified live against Immich v3.1.0:
+    dc:description in an XMP sidecar is extracted into exifInfo.description
+    immediately on upload -- no async lag, unlike sidecarPath linking)."""
+    xmp_path = sheet_path + ".xmp"
+    xmp = XMP_TEMPLATE.format(description=xml_escape(entry["prompt"]))
+    with open(xmp_path, "w", encoding="utf-8") as f:
+        f.write(xmp)
+    return xmp_path
 
 
 def ffprobe_duration(video_path):
@@ -105,7 +136,8 @@ def compose_sheet(entry, still_paths, sheets_dir):
         ],
         check=True, capture_output=True,
     )
-    print(f"[{slug}] wrote {out_path}")
+    xmp_path = write_xmp_sidecar(entry, out_path)
+    print(f"[{slug}] wrote {out_path} (+ {os.path.basename(xmp_path)})")
     return out_path
 
 
