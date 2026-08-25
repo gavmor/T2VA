@@ -20,6 +20,21 @@
 # Never curl comfyui-local's /prompt endpoint outside this pipeline -- see
 # the genops AGENTS.md hard rule this repo inherits (no VRAM pre-flight
 # check exists, only this gpu-lock mutex).
+#
+# local-immich-gallery egress (2026-08-24): ported from blades68-lora's
+# pipeline (PRs #7/#8, merged same day) -- pushes every finished sheet from
+# both jobs into a shared Immich album. Unlike that pipeline's
+# krea2-playbook-crew-groups job, which scopes its Immich put to only the
+# quality-gated film_print style subset, T2VA has no style-family/
+# quality-gate axis at all (plain character/enemy sheets, no film-grade
+# variants) -- so both jobs here push unscoped, every sheet they produce.
+
+resource_types:
+  - name: immich-api
+    type: registry-image
+    source:
+      repository: ghcr.io/gavmor/immich-concourse-resource
+      tag: ((immich_resource_version))
 
 resources:
   - name: t2va-repo
@@ -54,6 +69,17 @@ resources:
       access_key_id: ((minio_access_key))
       secret_access_key: ((minio_secret_key))
       region_name: us-east-1
+
+  # local-immich-gallery: same immich-api resource type as blades68-lora's
+  # pipeline, same ((immich_url))/((immich_api_key)) vars -- shared secrets
+  # file, same Immich instance, see resource_types comment above for why
+  # gavmor/immich-concourse-resource is pinned to edge-b20bf24 not :latest.
+  - name: local-immich-gallery
+    type: immich-api
+    icon: image-multiple
+    source:
+      host: ((immich_url))
+      api_key: ((immich_api_key))
 
 jobs:
   - name: t2va-single
@@ -166,6 +192,18 @@ jobs:
                       exit 0
             - put: gpu-lock
               params: { release: gpu-lock }
+
+      # local-immich-gallery egress -- unscoped, see comment above jobs:.
+      - put: local-immich-gallery
+        no_get: true
+        params:
+          glob: "charref-sheets/*.png"
+          visibility: "timeline"
+          album: "Esoteria T2VA Character Sheets"
+          tags:
+            - "Esoteria"
+            - "T2VA"
+            - "Concourse Render"
 
   - name: t2va-batch-all
     serial_groups: [gpu]
@@ -320,3 +358,17 @@ jobs:
                 (cd charref-sheets && tar -czf - *.png) > "verified-assets/t2va-sheets-${RUN_ID}.tar.gz"
       - put: t2va-sheets-s3
         params: { file: verified-assets/t2va-sheets-*.tar.gz }
+
+      # local-immich-gallery egress: lands after the s3 put so a
+      # failed/slow Immich upload never blocks the archival publish this
+      # job already depends on. Unscoped, see comment above jobs:.
+      - put: local-immich-gallery
+        no_get: true
+        params:
+          glob: "charref-sheets/*.png"
+          visibility: "timeline"
+          album: "Esoteria T2VA Character Sheets"
+          tags:
+            - "Esoteria"
+            - "T2VA"
+            - "Concourse Render"
