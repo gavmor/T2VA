@@ -111,3 +111,26 @@ Both endpoint images changed:
 Same validation discipline as v1: single asset (Raven), isolated
 `t2va-drawing-tutorial-validate` pipeline, no expansion until Gavin signs
 off on this iteration.
+
+**v2 ran.** Paper background and 8-panel count both landed cleanly. Bonus,
+unprompted: a drawing hand appeared mid-stroke through the sketch/lineart
+stages, dropping out once the piece moved into color/rendering -- reads
+as a genuine "how it was drawn" tutorial rather than a static morph.
+
+Gavin's verdict: "Not great. We want the shape primitives." The early
+panels ("Basic Forms"/"Rough Structure"/"Detail Pass") rendered as a
+flat gesture-outline sketch (head circle -> torso blob -> body contour),
+not the classic Loomis/Reilly geometric-primitive blocking-in method
+(sphere skull, box ribcage, box pelvis, cylinder limbs, visibly
+three-dimensional) that the original Reddit prompt's "basic forms,
+shapes, rectangles, cylinders, cones" phrasing was meant to produce.
+
+**v3 (prompt rewrite, same images/frame-count/seed): built, not yet run
+at time of writing.** The Reddit prompt's original phrasing rendered too
+loosely -- rewrote the construction-stage instruction to explicitly name
+each primitive (sphere/box/box/cylinder/cone) and require visible
+three-dimensional/shaded solid-shape rendering, "NOT a flat outline or
+gesture sketch," before allowing refinement into anatomical line art.
+Kept everything else (paper-background endpoint images, 8-frame
+extraction, seed 900001) unchanged to isolate the prompt-text change as
+the only variable vs. v2.

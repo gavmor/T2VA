@@ -22,7 +22,7 @@ import os
 import subprocess
 
 STAGE_LABELS = [
-    "Blank Canvas", "Basic Forms", "Rough Structure", "Detail Pass",
+    "Blank Canvas", "Primitive Shapes", "Rough Structure", "Detail Pass",
     "Line Refinement", "Base Color", "Rendering", "Final Render",
 ]
 N_STAGES = 8

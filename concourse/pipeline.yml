@@ -263,7 +263,15 @@ jobs:
                 # skill/Krea2 Identity Edit LoRA, identity/pose preserved)
                 # instead of the live rendered scene, so the morph should
                 # carry paper through instead of the cyberpunk alley.
-                PROMPT="Create a video tutorial of how this reference character image was created, drawn on a plain paper art-instruction sheet with no background scene. Start from a blank canvas and then draw the basic forms, shapes, rectangles, cylinders, cones, etc and then show the next layer of the details and then the next layer of the color and the rendering so we see all the layers in one pass until we get to the final image, which is the reference image: a genetically cloned infiltration specimen (Raven Project), lean tactical bodysuit, energy weapon, cybernetic edge, on a plain paper background."
+                # v3 (Gavin: v2's early panels were a flat gesture-outline
+                # sketch, not construction primitives): prompt now spells
+                # out the literal Loomis/Reilly primitive shapes -- sphere/
+                # box/cylinder/cone -- as their own explicit blocking-in
+                # stage before line art, since the original Reddit prompt's
+                # looser "basic forms, shapes, rectangles, cylinders,
+                # cones, etc" phrasing rendered as a generic gesture sketch
+                # rather than visibly dimensional solid primitives.
+                PROMPT="Create a video tutorial of how this reference character image was created, drawn on a plain paper art-instruction sheet with no background scene, using the classic Loomis/Reilly figure-construction method. Start from a blank canvas. Next, block in the figure using literal three-dimensional geometric solid primitives: a sphere for the skull, a box for the ribcage, a box for the pelvis, cylinders for the neck and each limb segment, and cones tapering the torso and joints -- these must look like solid dimensional geometric shapes with visible construction-line edges and shading, like a technical figure-drawing diagram, NOT a flat outline or gesture sketch. Only after the geometric primitive shapes are clearly visible should the drawing refine them into anatomical line art, then add structural detail, then line refinement, then base color, then full rendering, arriving at the final image, which is the reference image: a genetically cloned infiltration specimen (Raven Project), lean tactical bodysuit, energy weapon, cybernetic edge, on a plain paper background."
 
                 echo "--- uploading first/last frame reference images ---"
                 curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
