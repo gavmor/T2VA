@@ -26,6 +26,23 @@ CUT_SCORE_FLOOR = 1.0
 DEFAULT_FONT = "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"
 
 
+def write_description_sidecar(entry, sheet_path):
+    """Writes a plain-text <sheet>.description.txt next to the composed
+    reference sheet so immich-concourse-resource's out script (>=
+    edge-1b08091) auto-detects and binds it, landing the render prompt in
+    the Immich asset's exifInfo.description field via a direct, synchronous
+    PUT /api/assets/{id} -- no XML envelope or escaping needed on this side.
+    Supersedes an earlier hand-rolled XMP-sidecar version of this function
+    (this repo's own history, feature/immich-prompt-egress) once the
+    resource grew this convention natively -- see
+    gavmor/immich-concourse-resource#1 and gavmor/comfyui-workflows#13,
+    which made the identical swap in blades68-lora's own pipeline."""
+    description_path = sheet_path + ".description.txt"
+    with open(description_path, "w", encoding="utf-8") as f:
+        f.write(entry["prompt"])
+    return description_path
+
+
 def ffprobe_duration(video_path):
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -105,7 +122,8 @@ def compose_sheet(entry, still_paths, sheets_dir):
         ],
         check=True, capture_output=True,
     )
-    print(f"[{slug}] wrote {out_path}")
+    description_path = write_description_sidecar(entry, out_path)
+    print(f"[{slug}] wrote {out_path} (+ {os.path.basename(description_path)})")
     return out_path
 
 

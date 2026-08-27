@@ -23,7 +23,13 @@ immich_url: http://192.168.16.1:2283
 # type, pinned to the exact commit blades68-lora's pipeline validated
 # against a live Immich instance -- see that repo's pipeline.yml
 # resource_types comment for why not :latest.
-immich_resource_version: edge-b20bf24
+#
+# 2026-08-27 bump (b20bf24 -> 1b08091): picks up gavmor/immich-concourse-
+# resource#1's .description.txt sidecar convention (plain text, bound via a
+# direct synchronous PUT /api/assets/{id}) -- this repo's own
+# extract_and_compose.py hand-rolled an XMP-envelope version of the same
+# idea before that PR landed; swapped over in the same commit as this bump.
+immich_resource_version: edge-1b08091
 
 # char_slug (2026-08-24): which roster entry t2va-single renders. No
 # meaningful default -- left empty so `fly set-pipeline` without an
