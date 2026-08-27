@@ -2,7 +2,8 @@
 """
 Frame extraction + composition for the h3-drawing-tutorial-sheet experiment:
 turns one continuous "blank canvas -> final image" H3 construction video
-into a single 2x2 progressive-build-up still.
+into a single 4x2 progressive-build-up still (8 stages, doubled from the
+first validation's 4 per Gavin's feedback for finer-grained progression).
 
 Unlike extract_and_compose.py (T2VA's charref-sheet script), this does NOT
 use ffmpeg scdet cut detection -- that script's discrete 4-shot clips have
@@ -20,8 +21,11 @@ import argparse
 import os
 import subprocess
 
-STAGE_LABELS = ["Blank Canvas", "Basic Forms", "Structure & Detail", "Final Render"]
-N_STAGES = 4
+STAGE_LABELS = [
+    "Blank Canvas", "Basic Forms", "Rough Structure", "Detail Pass",
+    "Line Refinement", "Base Color", "Rendering", "Final Render",
+]
+N_STAGES = 8
 DEFAULT_FONT = "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"
 
 
@@ -68,7 +72,7 @@ def compose_sheet(slug, still_paths, out_path):
     subprocess.run(
         ["montage"] + labeled + [
             "-font", os.environ.get("T2VA_LABEL_FONT", DEFAULT_FONT),
-            "-tile", "2x2", "-geometry", "+6+6", "-background", "#0d3b3b",
+            "-tile", "4x2", "-geometry", "+6+6", "-background", "#0d3b3b",
             out_path,
         ],
         check=True, capture_output=True,

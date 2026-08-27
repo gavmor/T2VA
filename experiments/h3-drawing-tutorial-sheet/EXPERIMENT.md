@@ -80,7 +80,34 @@ morph with no hard cuts, so cut detection has nothing to find). See
 
 ## Status
 
-Not yet run. Pushed to a dedicated `t2va-drawing-tutorial-validate`
-Concourse pipeline (separate from the live `t2va` pipeline) pointed at
-this branch, per this repo's existing "-validate" one-off pipeline
-convention.
+**v1 (4-panel, live-scene background): ran, validated qualitatively.**
+Build #1 on `t2va-drawing-tutorial-validate` succeeded end-to-end --
+sheet legible as a real progressive sketch->structure->color->final
+build-up, not a blurry interpolation. Gavin's verdict: "kind ok," with
+two changes requested before iterating further:
+1. The composited background was the live rendered alley scene (carried
+   through every panel by the source video), not a paper/instructional
+   look.
+2. 4 panels felt coarse; wants 8 for finer-grained progression.
+
+**v2 (8-panel, paper background): built, not yet run at time of writing.**
+Both endpoint images changed:
+- `blank_canvas_paper.png` -- a synthesized parchment-toned (232,220,194)
+  textured canvas replacing the flat off-white `blank_canvas.png`.
+- `raven_reference_paper_bg.png` -- `raven_reference_still.png` run
+  through the genops `edit-image` skill (Krea 2 Identity Edit LoRA,
+  local, no external calls) with an explicit full-background-replacement
+  instruction (parchment/paper, no scene remnants). Chose this over
+  post-hoc masking + paper composite of each extracted frame: fewer
+  seams/edge artifacts, and it lets the whole H3 morph (not just the
+  final frame) render against paper from the start, since v1 showed the
+  model fills in background detail within the first ~0.6s regardless of
+  what the literal first_frame pixel content was.
+- `extract_and_compose_tutorial_sheet.py`: `N_STAGES` 4 -> 8, labels
+  expanded to 8 stages, montage tile `2x2` -> `4x2`.
+- Seed held at 900001 (unchanged from v1) to isolate the background/
+  frame-count change as the only variable versus v1.
+
+Same validation discipline as v1: single asset (Raven), isolated
+`t2va-drawing-tutorial-validate` pipeline, no expansion until Gavin signs
+off on this iteration.

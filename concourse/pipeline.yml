@@ -256,22 +256,29 @@ jobs:
                 # conditioning node), MiniMaxH3ImageToVideo pins
                 # first_frame/last_frame directly as graph inputs, so the
                 # prompt only needs to describe the desired process.
-                PROMPT="Create a video tutorial of how this reference character image was created. Start from a blank canvas and then draw the basic forms, shapes, rectangles, cylinders, cones, etc and then show the next layer of the details and then the next layer of the color and the rendering so we see all the layers in one pass until we get to the final image, which is the reference image: a genetically cloned infiltration specimen (Raven Project), lean tactical bodysuit, energy weapon, cybernetic edge."
+                # v2 (Gavin's feedback on the v1 validation): both endpoint
+                # images are now paper-background (blank_canvas_paper.png,
+                # raven_reference_paper_bg.png -- the latter background-
+                # swapped from the v1 alley-scene still via the edit-image
+                # skill/Krea2 Identity Edit LoRA, identity/pose preserved)
+                # instead of the live rendered scene, so the morph should
+                # carry paper through instead of the cyberpunk alley.
+                PROMPT="Create a video tutorial of how this reference character image was created, drawn on a plain paper art-instruction sheet with no background scene. Start from a blank canvas and then draw the basic forms, shapes, rectangles, cylinders, cones, etc and then show the next layer of the details and then the next layer of the color and the rendering so we see all the layers in one pass until we get to the final image, which is the reference image: a genetically cloned infiltration specimen (Raven Project), lean tactical bodysuit, energy weapon, cybernetic edge, on a plain paper background."
 
                 echo "--- uploading first/last frame reference images ---"
                 curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
-                  -F "image=@${ASSET_DIR}/blank_canvas.png;filename=drawing_tutorial_blank_canvas.png" \
+                  -F "image=@${ASSET_DIR}/blank_canvas_paper.png;filename=drawing_tutorial_blank_canvas_paper.png" \
                   -F "type=input" -F "overwrite=true" >/dev/null \
-                  || { echo "FAILED to upload blank_canvas.png"; exit 1; }
+                  || { echo "FAILED to upload blank_canvas_paper.png"; exit 1; }
                 curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
-                  -F "image=@${ASSET_DIR}/raven_reference_still.png;filename=drawing_tutorial_raven_reference.png" \
+                  -F "image=@${ASSET_DIR}/raven_reference_paper_bg.png;filename=drawing_tutorial_raven_reference_paper.png" \
                   -F "type=input" -F "overwrite=true" >/dev/null \
-                  || { echo "FAILED to upload raven_reference_still.png"; exit 1; }
+                  || { echo "FAILED to upload raven_reference_paper_bg.png"; exit 1; }
 
                 python3 scripts/build_drawing_tutorial_prompt.py \
                   --prompt "$PROMPT" --seed "$SEED" \
-                  --first-frame drawing_tutorial_blank_canvas.png \
-                  --last-frame drawing_tutorial_raven_reference.png \
+                  --first-frame drawing_tutorial_blank_canvas_paper.png \
+                  --last-frame drawing_tutorial_raven_reference_paper.png \
                   --output-prefix "t2va-tutorial/${SLUG}" \
                   --client-id "t2va-tutorial-${SLUG}" > /tmp/prompt.json
                 echo "--- [$(date -Iseconds)] submitting $SLUG tutorial-sheet (seed=$SEED) ---"
