@@ -44,6 +44,17 @@ resources:
       uri: https://github.com/gavmor/T2VA.git
       branch: main
 
+  # Experiment-only resource for t2va-drawing-tutorial-validate -- this
+  # pipeline is set under its own name (not the live `t2va` pipeline), so
+  # pinning to the feature branch here doesn't touch production. Distinct
+  # from t2va-repo (branch: main) above, which the real jobs still use.
+  - name: t2va-repo-experiment
+    type: git
+    icon: source-repository
+    source:
+      uri: https://github.com/gavmor/T2VA.git
+      branch: feature/h3-drawing-tutorial-sheet
+
   # Same physical gpu-lock pool blades68-lora's pipeline uses (this box has
   # exactly one GPU) -- cross-pipeline exclusivity requires sharing the one
   # pool, not standing up a second one.
@@ -204,6 +215,150 @@ jobs:
             - "Esoteria"
             - "T2VA"
             - "Concourse Render"
+
+  # t2va-drawing-tutorial-validate: single-asset feasibility probe for the
+  # H3 drawing-tutorial-sheet experiment (feature/h3-drawing-tutorial-sheet,
+  # see experiments/h3-drawing-tutorial-sheet/EXPERIMENT.md). Deliberately
+  # NOT wired into the live t2va/t2va-single jobs above -- gets t2va-repo-
+  # experiment (this branch) instead of t2va-repo (main), and is meant to
+  # be set under its own pipeline name (t2va-drawing-tutorial-validate),
+  # never applied over the production `t2va` pipeline.
+  - name: t2va-drawing-tutorial-validate
+    serial_groups: [gpu]
+    plan:
+      - get: t2va-repo-experiment
+      - put: gpu-lock
+        params: { acquire: true }
+      - task: render-tutorial-sheet
+        timeout: 20m
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: { repository: alpine }
+          inputs: [{ name: t2va-repo-experiment }]
+          outputs: [{ name: raw-videos }, { name: tutorial-sheets }]
+          params:
+            COMFYUI_LOCAL_URL: ((comfyui_local_url))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                set -e
+                apk add --no-cache curl jq python3 ffmpeg imagemagick font-dejavu >/dev/null
+                cd t2va-repo-experiment
+                ASSET_DIR=experiments/h3-drawing-tutorial-sheet
+                SLUG=raven
+                SEED=900001
+                # No #ImageN tokens: unlike the Reddit post's mechanism
+                # (a single text-referenced image slot on a reference-
+                # conditioning node), MiniMaxH3ImageToVideo pins
+                # first_frame/last_frame directly as graph inputs, so the
+                # prompt only needs to describe the desired process.
+                PROMPT="Create a video tutorial of how this reference character image was created. Start from a blank canvas and then draw the basic forms, shapes, rectangles, cylinders, cones, etc and then show the next layer of the details and then the next layer of the color and the rendering so we see all the layers in one pass until we get to the final image, which is the reference image: a genetically cloned infiltration specimen (Raven Project), lean tactical bodysuit, energy weapon, cybernetic edge."
+
+                echo "--- uploading first/last frame reference images ---"
+                curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
+                  -F "image=@${ASSET_DIR}/blank_canvas.png;filename=drawing_tutorial_blank_canvas.png" \
+                  -F "type=input" -F "overwrite=true" >/dev/null \
+                  || { echo "FAILED to upload blank_canvas.png"; exit 1; }
+                curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
+                  -F "image=@${ASSET_DIR}/raven_reference_still.png;filename=drawing_tutorial_raven_reference.png" \
+                  -F "type=input" -F "overwrite=true" >/dev/null \
+                  || { echo "FAILED to upload raven_reference_still.png"; exit 1; }
+
+                python3 scripts/build_drawing_tutorial_prompt.py \
+                  --prompt "$PROMPT" --seed "$SEED" \
+                  --first-frame drawing_tutorial_blank_canvas.png \
+                  --last-frame drawing_tutorial_raven_reference.png \
+                  --output-prefix "t2va-tutorial/${SLUG}" \
+                  --client-id "t2va-tutorial-${SLUG}" > /tmp/prompt.json
+                echo "--- [$(date -Iseconds)] submitting $SLUG tutorial-sheet (seed=$SEED) ---"
+                RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
+                  -H 'Content-Type: application/json' --data @/tmp/prompt.json)
+                PROMPT_ID=$(echo "$RESP" | jq -r .prompt_id)
+                if [ -z "$PROMPT_ID" ] || [ "$PROMPT_ID" = "null" ]; then
+                  echo "FAILED to submit $SLUG: $RESP"; exit 1
+                fi
+                COMPLETED=false
+                for j in $(seq 1 120); do
+                  sleep 3
+                  HIST=$(curl -sf "$COMFYUI_LOCAL_URL/history/$PROMPT_ID") || continue
+                  if [ "$HIST" != "{}" ]; then
+                    STATUS=$(echo "$HIST" | jq -r ".\"$PROMPT_ID\".status.completed")
+                    if [ "$STATUS" = "true" ]; then
+                      COMPLETED=true
+                      COMFY_FILE=$(echo "$HIST" | jq -r ".\"$PROMPT_ID\".outputs.\"612\".video[0].filename // .\"$PROMPT_ID\".outputs.\"612\".videos[0].filename // .\"$PROMPT_ID\".outputs.\"612\".images[0].filename // .\"$PROMPT_ID\".outputs.\"612\".gifs[0].filename")
+                      COMFY_SUBFOLDER=$(echo "$HIST" | jq -r ".\"$PROMPT_ID\".outputs.\"612\".video[0].subfolder // .\"$PROMPT_ID\".outputs.\"612\".videos[0].subfolder // .\"$PROMPT_ID\".outputs.\"612\".images[0].subfolder // .\"$PROMPT_ID\".outputs.\"612\".gifs[0].subfolder // \"\"")
+                      if [ -z "$COMFY_FILE" ] || [ "$COMFY_FILE" = "null" ]; then
+                        echo "FAILED: $SLUG completed but no video filename in outputs.612"; exit 1
+                      fi
+                      curl -sf -G "$COMFYUI_LOCAL_URL/view" \
+                        --data-urlencode "filename=$COMFY_FILE" \
+                        --data-urlencode "subfolder=$COMFY_SUBFOLDER" \
+                        --data-urlencode "type=output" \
+                        -o "../raw-videos/${SLUG}_tutorial.mp4" \
+                        || { echo "FAILED to fetch $SLUG"; exit 1; }
+                      echo "VIDEO_RESULT slug=$SLUG comfy_filename=$COMFY_FILE prompt_id=$PROMPT_ID"
+                      break
+                    elif [ "$STATUS" = "false" ] && echo "$HIST" | jq -e ".\"$PROMPT_ID\".status.status_str == \"error\"" >/dev/null 2>&1; then
+                      echo "FAILED: $SLUG -- comfyui-local execution error: $(echo "$HIST" | jq -c ".\"$PROMPT_ID\".status")"; exit 1
+                    fi
+                  fi
+                done
+                if [ "$COMPLETED" != "true" ]; then
+                  echo "TIMEOUT waiting for $SLUG (prompt_id=$PROMPT_ID)"; exit 1
+                fi
+                python3 scripts/extract_and_compose_tutorial_sheet.py --slug "$SLUG" \
+                  --video "../raw-videos/${SLUG}_tutorial.mp4" \
+                  --stills-dir /tmp/t2va-tutorial-stills \
+                  --out "../tutorial-sheets/${SLUG}_tutorial_sheet.png"
+                SHEET="../tutorial-sheets/${SLUG}_tutorial_sheet.png"
+                echo "${PROMPT}" > "${SHEET}.description.txt"
+                curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
+                  -F "image=@${SHEET};filename=${SLUG}_tutorial_sheet.png" \
+                  -F "type=output" -F "subfolder=t2va-drawing-tutorial-validate" -F "overwrite=true" >/dev/null \
+                  || { echo "FAILED to upload ${SLUG}_tutorial_sheet.png"; exit 1; }
+                echo "SHEET_RESULT filename=${SLUG}_tutorial_sheet.png subfolder=t2va-drawing-tutorial-validate"
+                echo "--- [$(date -Iseconds)] t2va-drawing-tutorial-validate: $SLUG complete ---"
+        ensure:
+          in_parallel:
+            - task: flush-vram
+              config:
+                platform: linux
+                image_resource:
+                  type: registry-image
+                  source: { repository: alpine }
+                params: { COMFYUI_LOCAL_URL: ((comfyui_local_url)) }
+                run:
+                  path: sh
+                  args:
+                    - -c
+                    - |
+                      apk add --no-cache curl >/dev/null
+                      curl -sf -X POST "$COMFYUI_LOCAL_URL/free" \
+                        -H 'Content-Type: application/json' \
+                        --data '{"unload_models": true, "free_memory": true}' \
+                        || echo "WARNING: flush-vram POST /free failed"
+                      exit 0
+            - put: gpu-lock
+              params: { release: gpu-lock }
+
+      # local-immich-gallery egress: same convention as t2va-single, so
+      # Gavin can eyeball the composited sheet straight from Immich instead
+      # of digging into a Concourse build's task output.
+      - put: local-immich-gallery
+        no_get: true
+        params:
+          glob: "tutorial-sheets/*.png"
+          visibility: "timeline"
+          album: "Esoteria T2VA Character Sheets"
+          tags:
+            - "Esoteria"
+            - "T2VA"
+            - "Concourse Render"
+            - "Experiment"
 
   - name: t2va-batch-all
     serial_groups: [gpu]
