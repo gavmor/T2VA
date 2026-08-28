@@ -375,6 +375,151 @@ jobs:
             - "Concourse Render"
             - "Experiment"
 
+  # t2va-drawing-tutorial-validate-raven-nohand: single-variable v4 test on
+  # top of the validated v3 Loomis-primitive prompt. Independently verified
+  # 2026-08-27 real Reddit post (r/StableDiffusion, "Generating 'fake'
+  # speedpaint timelapse with MiniMax H3" -- corroborated via a separate
+  # third-party summary site quoting the actual permalink, plus a matching
+  # toyxyz3 X post, since reddit.com itself is Cloudflare-blocked from here)
+  # documents the same construction-sheet technique with one prompt
+  # instruction we hadn't tried: explicitly telling H3 to keep only the
+  # canvas in frame, no drawing hand/pencil ever visible. Our own v1/v2
+  # runs had a hand appear unprompted and we logged it as a nice bonus --
+  # but that post's own comment section pushed back hard on the hand look
+  # (mocked as "holding the pen at exactly the same angle like a robot"),
+  # so this is a real, disputed question worth testing rather than assuming
+  # our reaction was the right one. Everything else (asset, seed, images,
+  # frame count, resolution) held identical to the validated v3 raven job
+  # -- the hand-removal clause is the only variable changed.
+  - name: t2va-drawing-tutorial-validate-raven-nohand
+    serial_groups: [gpu]
+    plan:
+      - get: t2va-repo-experiment
+      - put: gpu-lock
+        params: { acquire: true }
+      - task: render-tutorial-sheet
+        timeout: 20m
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: { repository: alpine }
+          inputs: [{ name: t2va-repo-experiment }]
+          outputs: [{ name: raw-videos }, { name: tutorial-sheets }]
+          params:
+            COMFYUI_LOCAL_URL: ((comfyui_local_url))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                set -e
+                apk add --no-cache curl jq python3 ffmpeg imagemagick font-dejavu >/dev/null
+                cd t2va-repo-experiment
+                ASSET_DIR=experiments/h3-drawing-tutorial-sheet
+                SLUG=raven-nohand
+                SEED=900001
+                PROMPT="Create a video tutorial of how this reference character image was created, drawn on a plain paper art-instruction sheet with no background scene, using the classic Loomis/Reilly figure-construction method. The camera shows only the canvas from directly above; no hand, pencil, or other drawing implement is ever visible in frame at any point in the video -- only the paper and the marks appearing on it. Start from a blank canvas. Next, block in the figure using literal three-dimensional geometric solid primitives: a sphere for the skull, a box for the ribcage, a box for the pelvis, cylinders for the neck and each limb segment, and cones tapering the torso and joints -- these must look like solid dimensional geometric shapes with visible construction-line edges and shading, like a technical figure-drawing diagram, NOT a flat outline or gesture sketch. Only after the geometric primitive shapes are clearly visible should the drawing refine them into anatomical line art, then add structural detail, then line refinement, then base color, then full rendering, arriving at the final image, which is the reference image: a genetically cloned infiltration specimen (Raven Project), lean tactical bodysuit, energy weapon, cybernetic edge, on a plain paper background."
+
+                echo "--- uploading first/last frame reference images ---"
+                curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
+                  -F "image=@${ASSET_DIR}/blank_canvas_paper.png;filename=drawing_tutorial_blank_canvas_paper.png" \
+                  -F "type=input" -F "overwrite=true" >/dev/null \
+                  || { echo "FAILED to upload blank_canvas_paper.png"; exit 1; }
+                curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
+                  -F "image=@${ASSET_DIR}/raven_reference_paper_bg.png;filename=drawing_tutorial_raven_reference_paper.png" \
+                  -F "type=input" -F "overwrite=true" >/dev/null \
+                  || { echo "FAILED to upload raven_reference_paper_bg.png"; exit 1; }
+
+                python3 scripts/build_drawing_tutorial_prompt.py \
+                  --prompt "$PROMPT" --seed "$SEED" \
+                  --first-frame drawing_tutorial_blank_canvas_paper.png \
+                  --last-frame drawing_tutorial_raven_reference_paper.png \
+                  --output-prefix "t2va-tutorial/${SLUG}" \
+                  --client-id "t2va-tutorial-${SLUG}" > /tmp/prompt.json
+                echo "--- [$(date -Iseconds)] submitting $SLUG tutorial-sheet (seed=$SEED) ---"
+                RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
+                  -H 'Content-Type: application/json' --data @/tmp/prompt.json)
+                PROMPT_ID=$(echo "$RESP" | jq -r .prompt_id)
+                if [ -z "$PROMPT_ID" ] || [ "$PROMPT_ID" = "null" ]; then
+                  echo "FAILED to submit $SLUG: $RESP"; exit 1
+                fi
+                COMPLETED=false
+                for j in $(seq 1 120); do
+                  sleep 3
+                  HIST=$(curl -sf "$COMFYUI_LOCAL_URL/history/$PROMPT_ID") || continue
+                  if [ "$HIST" != "{}" ]; then
+                    STATUS=$(echo "$HIST" | jq -r ".\"$PROMPT_ID\".status.completed")
+                    if [ "$STATUS" = "true" ]; then
+                      COMPLETED=true
+                      COMFY_FILE=$(echo "$HIST" | jq -r ".\"$PROMPT_ID\".outputs.\"612\".video[0].filename // .\"$PROMPT_ID\".outputs.\"612\".videos[0].filename // .\"$PROMPT_ID\".outputs.\"612\".images[0].filename // .\"$PROMPT_ID\".outputs.\"612\".gifs[0].filename")
+                      COMFY_SUBFOLDER=$(echo "$HIST" | jq -r ".\"$PROMPT_ID\".outputs.\"612\".video[0].subfolder // .\"$PROMPT_ID\".outputs.\"612\".videos[0].subfolder // .\"$PROMPT_ID\".outputs.\"612\".images[0].subfolder // .\"$PROMPT_ID\".outputs.\"612\".gifs[0].subfolder // \"\"")
+                      if [ -z "$COMFY_FILE" ] || [ "$COMFY_FILE" = "null" ]; then
+                        echo "FAILED: $SLUG completed but no video filename in outputs.612"; exit 1
+                      fi
+                      curl -sf -G "$COMFYUI_LOCAL_URL/view" \
+                        --data-urlencode "filename=$COMFY_FILE" \
+                        --data-urlencode "subfolder=$COMFY_SUBFOLDER" \
+                        --data-urlencode "type=output" \
+                        -o "../raw-videos/${SLUG}_tutorial.mp4" \
+                        || { echo "FAILED to fetch $SLUG"; exit 1; }
+                      echo "VIDEO_RESULT slug=$SLUG comfy_filename=$COMFY_FILE prompt_id=$PROMPT_ID"
+                      break
+                    elif [ "$STATUS" = "false" ] && echo "$HIST" | jq -e ".\"$PROMPT_ID\".status.status_str == \"error\"" >/dev/null 2>&1; then
+                      echo "FAILED: $SLUG -- comfyui-local execution error: $(echo "$HIST" | jq -c ".\"$PROMPT_ID\".status")"; exit 1
+                    fi
+                  fi
+                done
+                if [ "$COMPLETED" != "true" ]; then
+                  echo "TIMEOUT waiting for $SLUG (prompt_id=$PROMPT_ID)"; exit 1
+                fi
+                python3 scripts/extract_and_compose_tutorial_sheet.py --slug "$SLUG" \
+                  --video "../raw-videos/${SLUG}_tutorial.mp4" \
+                  --stills-dir /tmp/t2va-tutorial-stills \
+                  --out "../tutorial-sheets/${SLUG}_tutorial_sheet.png"
+                SHEET="../tutorial-sheets/${SLUG}_tutorial_sheet.png"
+                echo "${PROMPT}" > "${SHEET}.description.txt"
+                curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
+                  -F "image=@${SHEET};filename=${SLUG}_tutorial_sheet.png" \
+                  -F "type=output" -F "subfolder=t2va-drawing-tutorial-validate" -F "overwrite=true" >/dev/null \
+                  || { echo "FAILED to upload ${SLUG}_tutorial_sheet.png"; exit 1; }
+                echo "SHEET_RESULT filename=${SLUG}_tutorial_sheet.png subfolder=t2va-drawing-tutorial-validate"
+                echo "--- [$(date -Iseconds)] t2va-drawing-tutorial-validate-raven-nohand: $SLUG complete ---"
+        ensure:
+          in_parallel:
+            - task: flush-vram
+              config:
+                platform: linux
+                image_resource:
+                  type: registry-image
+                  source: { repository: alpine }
+                params: { COMFYUI_LOCAL_URL: ((comfyui_local_url)) }
+                run:
+                  path: sh
+                  args:
+                    - -c
+                    - |
+                      apk add --no-cache curl >/dev/null
+                      curl -sf -X POST "$COMFYUI_LOCAL_URL/free" \
+                        -H 'Content-Type: application/json' \
+                        --data '{"unload_models": true, "free_memory": true}' \
+                        || echo "WARNING: flush-vram POST /free failed"
+                      exit 0
+            - put: gpu-lock
+              params: { release: gpu-lock }
+
+      - put: local-immich-gallery
+        no_get: true
+        params:
+          glob: "tutorial-sheets/*.png"
+          visibility: "timeline"
+          album: "Esoteria T2VA Character Sheets"
+          tags:
+            - "Esoteria"
+            - "T2VA"
+            - "Concourse Render"
+            - "Experiment"
+
   # t2va-drawing-tutorial-validate-constbot: second-asset expansion of the
   # same v3 (Loomis-primitive) drawing-tutorial-sheet recipe validated on
   # Raven. Deliberately a robot subject (constbot, category "robot" per
