@@ -68,4 +68,16 @@ as every other genops Immich-uploading job this session.
 
 ## Status
 
-**v1: built, dispatched via Concourse.** Not yet reviewed.
+**v1: built, dispatched via Concourse (build 1, succeeded 2026-08-27, 22m26s).**
+Technical verification done 2026-08-28: pulled the actual output straight
+off `comfyui-local`'s output dir (`t2va-sync-sound/raven_sync_sound_v1_00001_.mp4`)
+via ffprobe/ffmpeg, not from a claimed status line. Confirmed h264 480x864,
+158 frames / 6.583s (exact match to spec), real stereo AAC audio 32kHz,
+mean -20.1dB / max -0.5dB (non-silent, not clipped, hot but not silent).
+Also confirmed live in Immich, album "Esoteria T2VA Character Sheets",
+asset `28602f82-30d0-4f84-aef2-5fa816672dcd`.
+
+Technical checks pass. **Qualitative call on actual audio-motion sync
+(footfall-on-pivot, weapon-lock-on-raise, dialogue lip-sync) is still
+Gavin's to make** -- not automated, per the Dependent Variable section
+above. Not yet reviewed by him.
