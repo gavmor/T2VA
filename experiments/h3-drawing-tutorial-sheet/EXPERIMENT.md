@@ -165,3 +165,31 @@ of the hand-suppression instruction changed (negative -> affirmative,
 no more "hand"/"pencil"/"drawing implement" tokens anywhere in the
 prompt). New job `t2va-drawing-tutorial-validate-raven-nohand-v2` in
 `concourse/pipeline.yml`, output slug `raven-nohand-v2`.
+
+**v5 ran** (`t2va-drawing-tutorial-validate-raven-nohand-v2` build 1,
+2026-08-28). **Also did not work.** Visually reviewed
+`raven-nohand-v2_tutorial_sheet.png`: hand/pencil still clearly present
+in 5 of 8 panels (Primitive Shapes, Rough Structure, Detail Pass, Line
+Refinement, Base Color), plus a faint hand-shaped shadow/motion-blur
+artifact bottom-right of Rendering. Only Blank Canvas and Final Render
+are clean -- same pattern as v4, no real improvement from the
+negative -> affirmative prompt rewrite.
+
+Reading on why: this node graph uses `MiniMaxH3ImageToVideo` and the
+literal instruction is "create a video tutorial of how this was drawn."
+"Tutorial video of a drawing being made" is itself a training-data prior
+that strongly implies a filmed human hand -- rephrasing the hand-specific
+clause (negative or affirmative) may not be enough to override the
+framing itself. Not tested yet: dropping "tutorial video" framing
+entirely in favor of describing it as a motion-graphics/animated-diagram
+style with no implied camera operator or human present at all (e.g. "an
+animated technical diagram" rather than "a video tutorial of how this
+was drawn").
+
+**Status: v3 (Loomis primitives) is the validated base recipe. Hand
+suppression is unsolved after two single-variable attempts (v4 negative,
+v5 affirmative) -- holding here to get a decision from Gavin on whether
+to keep iterating (untested idea: reframe away from "tutorial video"
+entirely) or take a different approach (e.g. crop to the two clean
+endpoint panels only) before spending more GPU time on more prompt
+guesses.**
