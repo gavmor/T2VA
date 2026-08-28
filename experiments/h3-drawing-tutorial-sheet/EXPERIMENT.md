@@ -125,12 +125,43 @@ not the classic Loomis/Reilly geometric-primitive blocking-in method
 three-dimensional) that the original Reddit prompt's "basic forms,
 shapes, rectangles, cylinders, cones" phrasing was meant to produce.
 
-**v3 (prompt rewrite, same images/frame-count/seed): built, not yet run
-at time of writing.** The Reddit prompt's original phrasing rendered too
-loosely -- rewrote the construction-stage instruction to explicitly name
-each primitive (sphere/box/box/cylinder/cone) and require visible
-three-dimensional/shaded solid-shape rendering, "NOT a flat outline or
-gesture sketch," before allowing refinement into anatomical line art.
-Kept everything else (paper-background endpoint images, 8-frame
-extraction, seed 900001) unchanged to isolate the prompt-text change as
-the only variable vs. v2.
+**v3 (prompt rewrite, same images/frame-count/seed): ran, succeeded**
+(`t2va-drawing-tutorial-validate` build 3, 2026-08-26). Loomis-primitive
+construction stages rendered as intended (visible dimensional sphere/box/
+cylinder/cone blocking, not a flat gesture outline). Output:
+`raven_tutorial_sheet.png`. Also generalized to a second asset, constbot
+(robot), same prompt unchanged (`t2va-drawing-tutorial-validate-constbot`).
+
+**v4 (raven-nohand, same v3 prompt + one added sentence: "no hand, pencil,
+or other drawing implement is ever visible in frame"): ran, succeeded**
+(`t2va-drawing-tutorial-validate-raven-nohand` build 1, 2026-08-27).
+**Did not work** -- Gavin reviewed `raven-nohand_tutorial_sheet.png` and a
+hand/pencil is still clearly visible in 6 of 8 panels (everything except
+"Blank Canvas" and "Final Render"). Pure negation ("no hand ever visible")
+did not suppress the concept; naming "hand"/"pencil" in the prompt at all
+appears to prime the model to render them regardless of the negating
+language, a known failure mode for negative instructions in text-to-video
+generation.
+
+**v5 (raven-nohand-v2, affirmative rephrasing): built, dispatched via
+Concourse, not yet reviewed.**
+
+Hypothesis: rewriting the instruction to never name "hand," "pencil," or
+"drawing implement" at all -- instead framing the shot as a locked-off
+overhead view where the page fills the entire frame at all times, and
+lines/shading/color "appear on the page on their own, as though drawn by
+an unseen artist" -- will suppress the hand/pencil concept where pure
+negation failed, since the model has nothing to attend to as a visual
+target for that concept.
+
+Dependent variable: same as v4 -- does a hand or pencil/tool appear in
+any of the 8 panels. Binary pass/fail this time, not the original
+gesture-vs-primitive legibility judgment.
+
+Held constant vs. v4: asset (Raven), seed (900001), first/last-frame
+images (`blank_canvas_paper.png`, `raven_reference_paper_bg.png`),
+frame count (124), 8-panel extraction. Only the prompt text's phrasing
+of the hand-suppression instruction changed (negative -> affirmative,
+no more "hand"/"pencil"/"drawing implement" tokens anywhere in the
+prompt). New job `t2va-drawing-tutorial-validate-raven-nohand-v2` in
+`concourse/pipeline.yml`, output slug `raven-nohand-v2`.
