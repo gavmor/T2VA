@@ -68,3 +68,22 @@ never tried to decode pixels from it). Real sprite data for Raven likely
 exists in there, but cracking it is a genuine, nontrivial RLE-format
 reverse-engineering task on its own -- not done here, not blocking this
 fix since the 1998 screenshots already gave real, sufficient grounding.
+
+## Cutscene footage: also checked directly, not just summarized
+
+`esoteria-diegetic-text/frames-ending/scene_0005.png` (Ending.avi, in front
+of the "SANGUINE DRAK"/"HUEY HUNTER" wall posters the README already
+identified) shows a bulky white-and-blue armored humanoid walking beside a
+large silver mech -- corroborates the gameplay-screenshot finding above
+(bulky powered armor, not lean) from a second, independent source. Accent
+color reads blue here vs. red in the daylight gameplay screenshots, which
+could be scene lighting (dim blue-lit night street) rather than a real
+palette difference -- not fully resolved, noted as a caveat.
+
+`scene_0009.png`/`scene_0013.png` (later in the same cutscene) show a
+different, sleek dark-suited humanoid with a glowing red eye and a
+swept-back head crest -- clearly not the bulky armored figure from
+scene_0005. Identity not determined (Rival? a separate antagonist? the
+"Solbzen" the RIVAL transmission text mentions?) -- flagging as an open
+question rather than guessing; did not fold this into any roster.json
+description.
