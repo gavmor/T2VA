@@ -4,13 +4,13 @@
 # .secrets/vars.yml (NOT duplicated into this repo -- same gpu-lock/minio
 # credentials, no reason to fork them):
 #
-#   fly -t blades68 set-pipeline -p t2va -c concourse/pipeline.yml \
+#   fly -t blades68 set-pipeline -p charref-gen -c concourse/pipeline.yml \
 #     -l concourse/vars.default.yml \
 #     -l ~/code/blades68-lora/concourse/.secrets/vars.yml \
 #     -v char_slug=CHANGE_ME
 #
-# char_slug/t2va_limit have no default on purpose -- see README.md for the
-# per-job vars each requires.
+# char_slug/charref_limit have no default on purpose -- see README.md for
+# the per-job vars each requires.
 
 comfyui_local_url: http://192.168.16.1:8188
 minio_endpoint: http://192.168.16.1:9000
@@ -31,14 +31,16 @@ immich_url: http://192.168.16.1:2283
 # idea before that PR landed; swapped over in the same commit as this bump.
 immich_resource_version: edge-1b08091
 
-# char_slug (2026-08-24): which roster entry t2va-single renders. No
+# char_slug (2026-08-24): which roster entry charref-single renders. No
 # meaningful default -- left empty so `fly set-pipeline` without an
-# explicit -v char_slug=<slug> produces a t2va-single job that fails fast
-# in build_manifest.py's --slug lookup rather than silently rendering the
-# wrong (or a stale previous) character.
+# explicit -v char_slug=<slug> produces a charref-single job that fails
+# fast in build_manifest.py's --slug lookup rather than silently
+# rendering the wrong (or a stale previous) character.
 char_slug: ""
-# t2va_limit (2026-08-24): validation knob for t2va-batch-all, same
+# charref_limit (2026-08-24, renamed from t2va_limit 2026-08-28 -- it
+# gates charref-batch-all, whose final deliverable is static charref
+# sheets, not video/audio): validation knob for charref-batch-all, same
 # convention as blades68-lora's charref_limit -- empty means the real
 # full 30-entry roster; set to a small number only for a throwaway test
 # validating the render mechanism before committing to the full batch.
-t2va_limit: ""
+charref_limit: ""
