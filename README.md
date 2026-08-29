@@ -11,6 +11,19 @@ port, a distinct parallel effort -- see `data/raw_texture_status.md`). This
 repo only reads roster names/lore from the Esoteria asset RE work; it does
 not vendor or modify that codebase.
 
+## Origin
+
+The 4-shot template (head closeup / full-body front / back / side, neutral
+A-pose) traces back to [u/bstr3k's "Using H3 as a Character Reference Sheet
+Generator"](https://www.reddit.com/r/StableDiffusion/comments/1vr5nvc/using_h3_as_a_character_reference_sheet_generator/)
+(r/StableDiffusion, 2026-08-17) -- multi-image reference (up to 9 images)
+generating a static 360-degree character sheet, with the same "neutral A
+pose" fixed prompt and a 4-panel/6-panel workflow choice. This wasn't
+documented anywhere in this repo's or `blades68-lora`'s history until now
+(found 2026-08-29); the technique itself was ported from `blades68-lora`'s
+`h3-charref-fullredo` job, whose first ad hoc pilot (`gen_charref/`,
+2026-08-17, gitignored, never committed) landed the same day as this post.
+
 ## Why T2VA mode (not image-conditioned R2V)
 
 The Esoteria asset formats haven't been decoded far enough to produce real
