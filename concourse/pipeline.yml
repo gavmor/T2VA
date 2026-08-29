@@ -168,9 +168,9 @@ jobs:
                 SHEET="../charref-sheets/${SLUG}_charref.png"
                 curl -sf -X POST "$COMFYUI_LOCAL_URL/upload/image" \
                   -F "image=@${SHEET};filename=${SLUG}_charref.png" \
-                  -F "type=output" -F "subfolder=t2va-single" -F "overwrite=true" >/dev/null \
+                  -F "type=output" -F "subfolder=charref-single" -F "overwrite=true" >/dev/null \
                   || { echo "FAILED to upload ${SLUG}_charref.png"; exit 1; }
-                echo "SHEET_RESULT filename=${SLUG}_charref.png subfolder=t2va-single"
+                echo "SHEET_RESULT filename=${SLUG}_charref.png subfolder=charref-single"
                 echo "--- [$(date -Iseconds)] charref-single: $SLUG complete ---"
         ensure:
           in_parallel:
