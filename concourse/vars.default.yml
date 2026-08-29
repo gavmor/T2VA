@@ -4,7 +4,7 @@
 # .secrets/vars.yml (NOT duplicated into this repo -- same gpu-lock/minio
 # credentials, no reason to fork them):
 #
-#   fly -t blades68 set-pipeline -p t2va -c concourse/pipeline.yml \
+#   fly -t blades68 set-pipeline -p charref-gen -c concourse/pipeline.yml \
 #     -l concourse/vars.default.yml \
 #     -l ~/code/blades68-lora/concourse/.secrets/vars.yml \
 #     -v char_slug=CHANGE_ME

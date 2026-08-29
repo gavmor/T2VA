@@ -1,4 +1,6 @@
-# T2VA -- Esoteria (1998) character/enemy roster reference-sheet generation.
+# charref-gen -- Esoteria (1998) character/enemy roster reference-sheet
+# generation, the tip-of-spear use case for a pipeline that isn't
+# Esoteria-specific (formerly named T2VA).
 #
 # Ported architecture from blades68-lora's h3-charref-fullredo job (see that
 # repo's concourse/pipeline.yml, 2026-08-23): same validated MiniMax H3 T2VA
@@ -25,7 +27,7 @@
 # pipeline (PRs #7/#8, merged same day) -- pushes every finished sheet from
 # both jobs into a shared Immich album. Unlike that pipeline's
 # krea2-playbook-crew-groups job, which scopes its Immich put to only the
-# quality-gated film_print style subset, T2VA has no style-family/
+# quality-gated film_print style subset, charref-gen has no style-family/
 # quality-gate axis at all (plain character/enemy sheets, no film-grade
 # variants) -- so both jobs here push unscoped, every sheet they produce.
 
@@ -41,7 +43,7 @@ resources:
     type: git
     icon: source-repository
     source:
-      uri: https://github.com/gavmor/T2VA.git
+      uri: https://github.com/gavmor/charref-gen.git
       branch: main
 
   # Same physical gpu-lock pool blades68-lora's pipeline uses (this box has

@@ -1,4 +1,4 @@
-# T2VA
+# charref-gen
 
 MiniMax H3 T2VA (text-to-video+audio) character-reference-sheet generation
 for the full **Esoteria** (1998, Kirin Entertainment / Mobeus Designs)
@@ -30,12 +30,12 @@ roster under the current asset-extraction understanding).
 ## Regenerating one character ("workshop" a single entry)
 
 ```sh
-fly -t blades68 set-pipeline -p t2va -c concourse/pipeline.yml \
+fly -t blades68 set-pipeline -p charref-gen -c concourse/pipeline.yml \
   -l concourse/vars.default.yml \
   -l ~/code/blades68-lora/concourse/.secrets/vars.yml \
   -v char_slug=raven
-fly -t blades68 unpause-pipeline -p t2va
-fly -t blades68 trigger-job -j t2va/t2va-single -w
+fly -t blades68 unpause-pipeline -p charref-gen
+fly -t blades68 trigger-job -j charref-gen/t2va-single -w
 ```
 
 Swap `char_slug` and re-run to regenerate a different (or the same, with a
@@ -45,11 +45,11 @@ lands in `charref-sheets/<slug>_charref.png` inside that build.
 ## Running the full 30-character batch
 
 ```sh
-fly -t blades68 set-pipeline -p t2va -c concourse/pipeline.yml \
+fly -t blades68 set-pipeline -p charref-gen -c concourse/pipeline.yml \
   -l concourse/vars.default.yml \
   -l ~/code/blades68-lora/concourse/.secrets/vars.yml \
   -v t2va_limit=""
-fly -t blades68 trigger-job -j t2va/t2va-batch-all -w
+fly -t blades68 trigger-job -j charref-gen/t2va-batch-all -w
 ```
 
 Set `-v t2va_limit=2` first to cheaply validate the mechanism on 2 entries
