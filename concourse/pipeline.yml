@@ -12,11 +12,11 @@
 # textures to condition an R2V (reference-image) render on.
 #
 # Two jobs:
-#   - t2va-single: workshop/regen exactly one roster entry, selected by the
+#   - charref-single: workshop/regen exactly one roster entry, selected by the
 #     ((char_slug)) pipeline var. Re-set the pipeline with a new var value
 #     to target a different character -- see README.md for the exact
 #     command. This is the "workshop extensively" entry point.
-#   - t2va-batch-all: the full 30-entry roster in one gpu-lock-serialized
+#   - charref-batch-all: the full 30-entry roster in one gpu-lock-serialized
 #     batch, for once the per-character technique is validated.
 #
 # Never curl comfyui-local's /prompt endpoint outside this pipeline -- see
@@ -46,15 +46,16 @@ resources:
       uri: https://github.com/gavmor/charref-gen.git
       branch: main
 
-  # Experiment-only resource for t2va-drawing-tutorial-validate -- this
-  # pipeline is set under its own name (not the live `t2va` pipeline), so
-  # pinning to the feature branch here doesn't touch production. Distinct
-  # from t2va-repo (branch: main) above, which the real jobs still use.
+  # Experiment-only resource for charref-drawing-tutorial-validate -- this
+  # pipeline is set under its own name (not the live `charref-gen`
+  # pipeline), so pinning to the feature branch here doesn't touch
+  # production. Distinct from t2va-repo (branch: main) above, which the
+  # real jobs still use.
   - name: t2va-repo-experiment
     type: git
     icon: source-repository
     source:
-      uri: https://github.com/gavmor/T2VA.git
+      uri: https://github.com/gavmor/charref-gen.git
       branch: feature/h3-drawing-tutorial-sheet
 
   # Same physical gpu-lock pool blades68-lora's pipeline uses (this box has
@@ -170,7 +171,7 @@ jobs:
                 python3 scripts/extract_and_compose.py --slug "$SLUG" \
                   --manifest "$MANIFEST" --video-dir ../raw-videos \
                   --stills-dir /tmp/t2va-stills --sheets-dir ../charref-sheets
-                # t2va-single's charref-sheets output is ephemeral (this
+                # charref-single's charref-sheets output is ephemeral (this
                 # task container is gone once the build ends) -- upload the
                 # finished sheet to comfyui-local's own output store so it's
                 # actually retrievable afterwards, same pattern
@@ -218,14 +219,18 @@ jobs:
             - "T2VA"
             - "Concourse Render"
 
-  # t2va-drawing-tutorial-validate: single-asset feasibility probe for the
-  # H3 drawing-tutorial-sheet experiment (feature/h3-drawing-tutorial-sheet,
-  # see experiments/h3-drawing-tutorial-sheet/EXPERIMENT.md). Deliberately
-  # NOT wired into the live t2va/t2va-single jobs above -- gets t2va-repo-
-  # experiment (this branch) instead of t2va-repo (main), and is meant to
-  # be set under its own pipeline name (t2va-drawing-tutorial-validate),
-  # never applied over the production `t2va` pipeline.
-  - name: t2va-drawing-tutorial-validate
+  # charref-drawing-tutorial-validate (renamed from t2va-drawing-tutorial-
+  # validate, 2026-08-28: the final deliverable here is a static sheet
+  # image, not video/audio -- see charref-gen's rename rationale):
+  # single-asset feasibility probe for the H3 drawing-tutorial-sheet
+  # experiment (feature/h3-drawing-tutorial-sheet, see
+  # experiments/h3-drawing-tutorial-sheet/EXPERIMENT.md). Deliberately
+  # NOT wired into the live charref-gen/charref-single jobs above -- gets
+  # t2va-repo-experiment (this branch) instead of t2va-repo (main), and is
+  # meant to be set under its own pipeline name
+  # (charref-drawing-tutorial-validate), never applied over the
+  # production `charref-gen` pipeline.
+  - name: charref-drawing-tutorial-validate
     serial_groups: [gpu]
     plan:
       - get: t2va-repo-experiment
@@ -290,7 +295,7 @@ jobs:
                   --first-frame drawing_tutorial_blank_canvas_paper.png \
                   --last-frame drawing_tutorial_raven_reference_paper.png \
                   --output-prefix "t2va-tutorial/${SLUG}" \
-                  --client-id "t2va-tutorial-${SLUG}" > /tmp/prompt.json
+                  --client-id "charref-tutorial-${SLUG}" > /tmp/prompt.json
                 echo "--- [$(date -Iseconds)] submitting $SLUG tutorial-sheet (seed=$SEED) ---"
                 RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
                   -H 'Content-Type: application/json' --data @/tmp/prompt.json)
@@ -338,7 +343,7 @@ jobs:
                   -F "type=output" -F "subfolder=t2va-drawing-tutorial-validate" -F "overwrite=true" >/dev/null \
                   || { echo "FAILED to upload ${SLUG}_tutorial_sheet.png"; exit 1; }
                 echo "SHEET_RESULT filename=${SLUG}_tutorial_sheet.png subfolder=t2va-drawing-tutorial-validate"
-                echo "--- [$(date -Iseconds)] t2va-drawing-tutorial-validate: $SLUG complete ---"
+                echo "--- [$(date -Iseconds)] charref-drawing-tutorial-validate: $SLUG complete ---"
         ensure:
           in_parallel:
             - task: flush-vram
@@ -362,7 +367,7 @@ jobs:
             - put: gpu-lock
               params: { release: gpu-lock }
 
-      # local-immich-gallery egress: same convention as t2va-single, so
+      # local-immich-gallery egress: same convention as charref-single, so
       # Gavin can eyeball the composited sheet straight from Immich instead
       # of digging into a Concourse build's task output.
       - put: local-immich-gallery
@@ -377,7 +382,9 @@ jobs:
             - "Concourse Render"
             - "Experiment"
 
-  # t2va-drawing-tutorial-validate-raven-nohand: single-variable v4 test on
+  # charref-drawing-tutorial-validate-raven-nohand (renamed from
+  # t2va-drawing-tutorial-validate-raven-nohand, same reasoning): single-
+  # variable v4 test on
   # top of the validated v3 Loomis-primitive prompt. Independently verified
   # 2026-08-27 real Reddit post (r/StableDiffusion, "Generating 'fake'
   # speedpaint timelapse with MiniMax H3" -- corroborated via a separate
@@ -393,7 +400,7 @@ jobs:
   # our reaction was the right one. Everything else (asset, seed, images,
   # frame count, resolution) held identical to the validated v3 raven job
   # -- the hand-removal clause is the only variable changed.
-  - name: t2va-drawing-tutorial-validate-raven-nohand
+  - name: charref-drawing-tutorial-validate-raven-nohand
     serial_groups: [gpu]
     plan:
       - get: t2va-repo-experiment
@@ -438,7 +445,7 @@ jobs:
                   --first-frame drawing_tutorial_blank_canvas_paper.png \
                   --last-frame drawing_tutorial_raven_reference_paper.png \
                   --output-prefix "t2va-tutorial/${SLUG}" \
-                  --client-id "t2va-tutorial-${SLUG}" > /tmp/prompt.json
+                  --client-id "charref-tutorial-${SLUG}" > /tmp/prompt.json
                 echo "--- [$(date -Iseconds)] submitting $SLUG tutorial-sheet (seed=$SEED) ---"
                 RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
                   -H 'Content-Type: application/json' --data @/tmp/prompt.json)
@@ -486,7 +493,7 @@ jobs:
                   -F "type=output" -F "subfolder=t2va-drawing-tutorial-validate" -F "overwrite=true" >/dev/null \
                   || { echo "FAILED to upload ${SLUG}_tutorial_sheet.png"; exit 1; }
                 echo "SHEET_RESULT filename=${SLUG}_tutorial_sheet.png subfolder=t2va-drawing-tutorial-validate"
-                echo "--- [$(date -Iseconds)] t2va-drawing-tutorial-validate-raven-nohand: $SLUG complete ---"
+                echo "--- [$(date -Iseconds)] charref-drawing-tutorial-validate-raven-nohand: $SLUG complete ---"
         ensure:
           in_parallel:
             - task: flush-vram
@@ -522,7 +529,9 @@ jobs:
             - "Concourse Render"
             - "Experiment"
 
-  # t2va-drawing-tutorial-validate-raven-nohand-v2: raven-nohand (v4) still
+  # charref-drawing-tutorial-validate-raven-nohand-v2 (renamed from
+  # t2va-drawing-tutorial-validate-raven-nohand-v2, same reasoning):
+  # raven-nohand (v4) still
   # showed a hand/pencil in every panel but the final one -- pure negation
   # ("no hand, pencil... ever visible") didn't suppress the concept, it
   # primed it. v5 rewrites the instruction to never name hand/pencil/tool
@@ -530,7 +539,7 @@ jobs:
   # appearing on their own, rather than telling the model what to omit.
   # Same asset/seed/images/frame-count as v4 -- isolates the prompt-phrasing
   # change (negative vs. affirmative) as the only variable.
-  - name: t2va-drawing-tutorial-validate-raven-nohand-v2
+  - name: charref-drawing-tutorial-validate-raven-nohand-v2
     serial_groups: [gpu]
     plan:
       - get: t2va-repo-experiment
@@ -575,7 +584,7 @@ jobs:
                   --first-frame drawing_tutorial_blank_canvas_paper.png \
                   --last-frame drawing_tutorial_raven_reference_paper.png \
                   --output-prefix "t2va-tutorial/${SLUG}" \
-                  --client-id "t2va-tutorial-${SLUG}" > /tmp/prompt.json
+                  --client-id "charref-tutorial-${SLUG}" > /tmp/prompt.json
                 echo "--- [$(date -Iseconds)] submitting $SLUG tutorial-sheet (seed=$SEED) ---"
                 RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
                   -H 'Content-Type: application/json' --data @/tmp/prompt.json)
@@ -623,7 +632,7 @@ jobs:
                   -F "type=output" -F "subfolder=t2va-drawing-tutorial-validate" -F "overwrite=true" >/dev/null \
                   || { echo "FAILED to upload ${SLUG}_tutorial_sheet.png"; exit 1; }
                 echo "SHEET_RESULT filename=${SLUG}_tutorial_sheet.png subfolder=t2va-drawing-tutorial-validate"
-                echo "--- [$(date -Iseconds)] t2va-drawing-tutorial-validate-raven-nohand-v2: $SLUG complete ---"
+                echo "--- [$(date -Iseconds)] charref-drawing-tutorial-validate-raven-nohand-v2: $SLUG complete ---"
         ensure:
           in_parallel:
             - task: flush-vram
@@ -659,7 +668,9 @@ jobs:
             - "Concourse Render"
             - "Experiment"
 
-  # t2va-drawing-tutorial-validate-constbot: second-asset expansion of the
+  # charref-drawing-tutorial-validate-constbot (renamed from
+  # t2va-drawing-tutorial-validate-constbot, same reasoning): second-asset
+  # expansion of the
   # same v3 (Loomis-primitive) drawing-tutorial-sheet recipe validated on
   # Raven. Deliberately a robot subject (constbot, category "robot" per
   # ../data/roster.json), not another human_trooper -- this is the actual
@@ -667,7 +678,7 @@ jobs:
   # generalizes beyond human anatomy, not just a repeat on a similar asset.
   # Same discipline as Raven: one new asset, isolated job, no batch-all
   # until this validates too.
-  - name: t2va-drawing-tutorial-validate-constbot
+  - name: charref-drawing-tutorial-validate-constbot
     serial_groups: [gpu]
     plan:
       - get: t2va-repo-experiment
@@ -719,7 +730,7 @@ jobs:
                   --first-frame drawing_tutorial_blank_canvas_paper.png \
                   --last-frame drawing_tutorial_constbot_reference_paper.png \
                   --output-prefix "t2va-tutorial/${SLUG}" \
-                  --client-id "t2va-tutorial-${SLUG}" > /tmp/prompt.json
+                  --client-id "charref-tutorial-${SLUG}" > /tmp/prompt.json
                 echo "--- [$(date -Iseconds)] submitting $SLUG tutorial-sheet (seed=$SEED) ---"
                 RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
                   -H 'Content-Type: application/json' --data @/tmp/prompt.json)
@@ -767,7 +778,7 @@ jobs:
                   -F "type=output" -F "subfolder=t2va-drawing-tutorial-validate" -F "overwrite=true" >/dev/null \
                   || { echo "FAILED to upload ${SLUG}_tutorial_sheet.png"; exit 1; }
                 echo "SHEET_RESULT filename=${SLUG}_tutorial_sheet.png subfolder=t2va-drawing-tutorial-validate"
-                echo "--- [$(date -Iseconds)] t2va-drawing-tutorial-validate-constbot: $SLUG complete ---"
+                echo "--- [$(date -Iseconds)] charref-drawing-tutorial-validate-constbot: $SLUG complete ---"
         ensure:
           in_parallel:
             - task: flush-vram
