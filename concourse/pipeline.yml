@@ -1,4 +1,6 @@
-# T2VA -- Esoteria (1998) character/enemy roster reference-sheet generation.
+# charref-gen -- Esoteria (1998) character/enemy roster reference-sheet
+# generation, the tip-of-spear use case for a pipeline that isn't
+# Esoteria-specific (formerly named T2VA).
 #
 # Ported architecture from blades68-lora's h3-charref-fullredo job (see that
 # repo's concourse/pipeline.yml, 2026-08-23): same validated MiniMax H3 T2VA
@@ -25,7 +27,7 @@
 # pipeline (PRs #7/#8, merged same day) -- pushes every finished sheet from
 # both jobs into a shared Immich album. Unlike that pipeline's
 # krea2-playbook-crew-groups job, which scopes its Immich put to only the
-# quality-gated film_print style subset, T2VA has no style-family/
+# quality-gated film_print style subset, charref-gen has no style-family/
 # quality-gate axis at all (plain character/enemy sheets, no film-grade
 # variants) -- so both jobs here push unscoped, every sheet they produce.
 
@@ -41,7 +43,7 @@ resources:
     type: git
     icon: source-repository
     source:
-      uri: https://github.com/gavmor/T2VA.git
+      uri: https://github.com/gavmor/charref-gen.git
       branch: main
 
   # Experiment-only resource for t2va-drawing-tutorial-validate -- this
@@ -93,7 +95,7 @@ resources:
       api_key: ((immich_api_key))
 
 jobs:
-  - name: t2va-single
+  - name: charref-single
     serial_groups: [gpu]
     plan:
       - get: t2va-repo
@@ -128,7 +130,7 @@ jobs:
                 python3 scripts/build_t2va_prompt.py \
                   --prompt "$PROMPT_TEXT" --seed "$SEED" \
                   --output-prefix "t2va/${SLUG}" \
-                  --client-id "t2va-single-${SLUG}" > /tmp/prompt.json
+                  --client-id "charref-single-${SLUG}" > /tmp/prompt.json
                 echo "--- [$(date -Iseconds)] submitting $SLUG (seed=$SEED) ---"
                 RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
                   -H 'Content-Type: application/json' --data @/tmp/prompt.json)
@@ -180,7 +182,7 @@ jobs:
                   -F "type=output" -F "subfolder=t2va-single" -F "overwrite=true" >/dev/null \
                   || { echo "FAILED to upload ${SLUG}_charref.png"; exit 1; }
                 echo "SHEET_RESULT filename=${SLUG}_charref.png subfolder=t2va-single"
-                echo "--- [$(date -Iseconds)] t2va-single: $SLUG complete ---"
+                echo "--- [$(date -Iseconds)] charref-single: $SLUG complete ---"
         ensure:
           in_parallel:
             - task: flush-vram
@@ -801,7 +803,7 @@ jobs:
             - "Concourse Render"
             - "Experiment"
 
-  - name: t2va-batch-all
+  - name: charref-batch-all
     serial_groups: [gpu]
     plan:
       - get: t2va-repo
@@ -820,7 +822,7 @@ jobs:
           outputs: [{ name: raw-videos }]
           params:
             COMFYUI_LOCAL_URL: ((comfyui_local_url))
-            T2VA_LIMIT: ((t2va_limit))
+            CHARREF_LIMIT: ((charref_limit))
           run:
             path: sh
             args:
@@ -829,10 +831,10 @@ jobs:
                 set -e
                 apk add --no-cache curl jq python3 >/dev/null
                 cd t2va-repo
-                python3 scripts/build_manifest.py ${T2VA_LIMIT:+--limit "$T2VA_LIMIT"}
+                python3 scripts/build_manifest.py ${CHARREF_LIMIT:+--limit "$CHARREF_LIMIT"}
                 MANIFEST=gen/manifest.json
                 COUNT=$(jq 'length' "$MANIFEST")
-                echo "--- [$(date -Iseconds)] t2va-batch-all: $COUNT clips to render ---"
+                echo "--- [$(date -Iseconds)] charref-batch-all: $COUNT clips to render ---"
                 i=0
                 jq -c '.[]' "$MANIFEST" | while IFS= read -r ENTRY; do
                   i=$((i+1))
@@ -842,7 +844,7 @@ jobs:
                   python3 scripts/build_t2va_prompt.py \
                     --prompt "$PROMPT_TEXT" --seed "$SEED" \
                     --output-prefix "t2va/${SLUG}" \
-                    --client-id "t2va-batch-${i}" > /tmp/prompt.json
+                    --client-id "charref-batch-${i}" > /tmp/prompt.json
                   echo "--- [$(date -Iseconds)] ($i/$COUNT) submitting $SLUG (seed=$SEED) ---"
                   RESP=$(curl -sf -X POST "$COMFYUI_LOCAL_URL/prompt" \
                     -H 'Content-Type: application/json' --data @/tmp/prompt.json)
@@ -882,7 +884,7 @@ jobs:
                 done
                 cp "$MANIFEST" ../raw-videos/manifest.json
                 FETCHED=$(ls ../raw-videos/*.mp4 2>/dev/null | wc -l)
-                echo "--- [$(date -Iseconds)] t2va-batch-all: $COUNT clips done, $FETCHED fetched ---"
+                echo "--- [$(date -Iseconds)] charref-batch-all: $COUNT clips done, $FETCHED fetched ---"
         ensure:
           in_parallel:
             - task: flush-vram
