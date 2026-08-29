@@ -35,7 +35,7 @@ fly -t blades68 set-pipeline -p charref-gen -c concourse/pipeline.yml \
   -l ~/code/blades68-lora/concourse/.secrets/vars.yml \
   -v char_slug=raven
 fly -t blades68 unpause-pipeline -p charref-gen
-fly -t blades68 trigger-job -j charref-gen/t2va-single -w
+fly -t blades68 trigger-job -j charref-gen/charref-single -w
 ```
 
 Swap `char_slug` and re-run to regenerate a different (or the same, with a
@@ -48,11 +48,11 @@ lands in `charref-sheets/<slug>_charref.png` inside that build.
 fly -t blades68 set-pipeline -p charref-gen -c concourse/pipeline.yml \
   -l concourse/vars.default.yml \
   -l ~/code/blades68-lora/concourse/.secrets/vars.yml \
-  -v t2va_limit=""
-fly -t blades68 trigger-job -j charref-gen/t2va-batch-all -w
+  -v charref_limit=""
+fly -t blades68 trigger-job -j charref-gen/charref-batch-all -w
 ```
 
-Set `-v t2va_limit=2` first to cheaply validate the mechanism on 2 entries
+Set `-v charref_limit=2` first to cheaply validate the mechanism on 2 entries
 before committing to the full batch -- same convention as blades68-lora's
 `charref_limit`.
 
@@ -80,5 +80,5 @@ alongside another GPU job expecting both to fit.
   prompt builder (node graph ported unchanged from blades68-lora)
 - `scripts/extract_and_compose.py` -- ffmpeg cut-detection + ImageMagick
   2x2 reference-sheet compositing (ported unchanged from blades68-lora)
-- `concourse/pipeline.yml` -- `t2va-single` (one character, parameterized)
-  and `t2va-batch-all` (full roster) jobs
+- `concourse/pipeline.yml` -- `charref-single` (one character, parameterized)
+  and `charref-batch-all` (full roster) jobs
