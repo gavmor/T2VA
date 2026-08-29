@@ -12,11 +12,11 @@
 # textures to condition an R2V (reference-image) render on.
 #
 # Two jobs:
-#   - t2va-single: workshop/regen exactly one roster entry, selected by the
-#     ((char_slug)) pipeline var. Re-set the pipeline with a new var value
-#     to target a different character -- see README.md for the exact
-#     command. This is the "workshop extensively" entry point.
-#   - t2va-batch-all: the full 30-entry roster in one gpu-lock-serialized
+#   - charref-single: workshop/regen exactly one roster entry, selected by
+#     the ((char_slug)) pipeline var. Re-set the pipeline with a new var
+#     value to target a different character -- see README.md for the
+#     exact command. This is the "workshop extensively" entry point.
+#   - charref-batch-all: the full 30-entry roster in one gpu-lock-serialized
 #     batch, for once the per-character technique is validated.
 #
 # Never curl comfyui-local's /prompt endpoint outside this pipeline -- see
@@ -159,7 +159,7 @@ jobs:
                 python3 scripts/extract_and_compose.py --slug "$SLUG" \
                   --manifest "$MANIFEST" --video-dir ../raw-videos \
                   --stills-dir /tmp/t2va-stills --sheets-dir ../charref-sheets
-                # t2va-single's charref-sheets output is ephemeral (this
+                # charref-single's charref-sheets output is ephemeral (this
                 # task container is gone once the build ends) -- upload the
                 # finished sheet to comfyui-local's own output store so it's
                 # actually retrievable afterwards, same pattern
