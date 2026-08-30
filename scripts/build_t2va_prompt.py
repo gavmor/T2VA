@@ -19,9 +19,10 @@ WIDTH = 480
 HEIGHT = 864
 LENGTH_FRAMES = 107  # ~4.46s @ 24fps, matches the validated blades68 pilot
 STEPS = 8
+DEFAULT_LORA_NAME = "minimax_h3_turbo_v4_step600_ema.safetensors"
 
 
-def build_api_prompt(prompt_text, seed, output_prefix):
+def build_api_prompt(prompt_text, seed, output_prefix, lora_name=DEFAULT_LORA_NAME):
     return {
         "119": {"inputs": {"vae_name": "minimax_h3_video_vae_fp16.safetensors"}, "class_type": "VAELoader"},
         "120": {"inputs": {"vae_name": "minimax_h3_audio_vae_fp32.safetensors"}, "class_type": "VAELoader"},
@@ -46,7 +47,7 @@ def build_api_prompt(prompt_text, seed, output_prefix):
         },
         "800": {
             "inputs": {
-                "lora_name": "minimax_h3_turbo_v4_step600_ema.safetensors",
+                "lora_name": lora_name,
                 "strength": 1,
                 "low_vram": True,
                 "model": ["596", 0],
@@ -110,9 +111,10 @@ def main():
     ap.add_argument("--seed", type=int, required=True)
     ap.add_argument("--output-prefix", required=True)
     ap.add_argument("--client-id", required=True)
+    ap.add_argument("--lora-name", default=DEFAULT_LORA_NAME)
     args = ap.parse_args()
 
-    api_prompt = build_api_prompt(args.prompt, args.seed, args.output_prefix)
+    api_prompt = build_api_prompt(args.prompt, args.seed, args.output_prefix, args.lora_name)
     print(json.dumps({"prompt": api_prompt, "client_id": args.client_id}))
 
 
